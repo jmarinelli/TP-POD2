@@ -122,8 +122,7 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService 
 				}
 			}
 		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			System.out.println("Interrputed");
 		} finally {
 			lock.release();
 		}
