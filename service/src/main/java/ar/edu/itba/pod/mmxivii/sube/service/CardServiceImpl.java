@@ -1,5 +1,7 @@
 package ar.edu.itba.pod.mmxivii.sube.service;
 
+import static ar.edu.itba.pod.mmxivii.sube.common.Utils.CARD_REGISTRY_BIND;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -7,6 +9,8 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.rmi.ConnectException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UID;
 import java.rmi.server.UnicastRemoteObject;
@@ -19,6 +23,7 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import ar.edu.itba.pod.mmxivii.sube.common.CardRegistry;
 import ar.edu.itba.pod.mmxivii.sube.common.CardService;
+import ar.edu.itba.pod.mmxivii.sube.common.Utils;
 import ar.edu.itba.pod.mmxivii.sube.service.exception.CardNotFoundException;
 import ar.edu.itba.pod.mmxivii.sube.service.exception.InvalidRechargeException;
 import ar.edu.itba.pod.mmxivii.sube.service.exception.InvalidTravelException;
@@ -30,7 +35,7 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService
 	private static final long FLUSH_TIME = 10000l;
 	
 	@Nonnull
-	private final CardRegistry cardRegistry;
+	private CardRegistry cardRegistry;
 	private final Jedis balances;
 
 	public CardServiceImpl(@Nonnull CardRegistry cardRegistry) throws RemoteException
@@ -98,10 +103,21 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService
 				if (result >= 0) {
 					this.balances.del(id);
 				}
+			} catch (ConnectException e) {
+				// Si hay un error en la conexión se intenta hacerla nuevamente
+				reconnectCardRegistry();
 			} catch (Exception e) {
 				// Corrupted data in redis, deleting
 				this.balances.del(id);
 			}
+		}
+	}
+	
+	private void reconnectCardRegistry() {
+		try {
+			this.cardRegistry = Utils.lookupObject(CARD_REGISTRY_BIND);
+		} catch (NotBoundException e) {
+			throw new IllegalStateException();
 		}
 	}
 	

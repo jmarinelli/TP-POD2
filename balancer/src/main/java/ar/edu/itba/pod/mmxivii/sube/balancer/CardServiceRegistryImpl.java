@@ -2,11 +2,11 @@ package ar.edu.itba.pod.mmxivii.sube.balancer;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.Nonnull;
 
@@ -16,7 +16,8 @@ import ar.edu.itba.pod.mmxivii.sube.common.CardServiceRegistry;
 public class CardServiceRegistryImpl extends UnicastRemoteObject implements CardServiceRegistry
 {
 	private static final long serialVersionUID = 2473638728674152366L;
-	private final List<CardService> serviceList = Collections.synchronizedList(new ArrayList<CardService>());
+	private final AtomicInteger index = new AtomicInteger(0);
+	private final List<CardService> serviceList = Collections.synchronizedList(new LinkedList<CardService>());
 
 	protected CardServiceRegistryImpl() throws RemoteException {}
 
@@ -40,10 +41,16 @@ public class CardServiceRegistryImpl extends UnicastRemoteObject implements Card
 
 	CardService getCardService()
 	{
-		double random = Math.random();
-		if (random > 0.5)
-			return serviceList.get(1);
-		else
-			return serviceList.get(0);
+		if (this.serviceList.isEmpty())
+			throw new IllegalStateException("There are no registered services");
+		synchronized (index) {
+			int current = index.intValue();
+			if (current >= this.serviceList.size()) {
+				current = 0;
+				index.set(current);
+			}
+			index.incrementAndGet();
+			return this.serviceList.get(current);
+		}
 	}
 }
