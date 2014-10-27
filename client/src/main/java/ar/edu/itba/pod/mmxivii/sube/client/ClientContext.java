@@ -88,8 +88,6 @@ public class ClientContext {
 			System.out.println("Starting simulation...");
 			Executor executors = Executors.newCachedThreadPool();
 
-//			int control = 0;
-
 			this.cards.add(this.cardClient.newCard("sim1", "simulationOne"));
 			this.cards.add(this.cardClient.newCard("sim2", "simulationTwo"));
 			this.cards.add(this.cardClient.newCard("sim3", "simulationThree"));
@@ -97,7 +95,7 @@ public class ClientContext {
 			this.cards.add(this.cardClient.newCard("sim5", "simulationFive"));
 			while (true) {
 				executors.execute(getCommand());
-				Thread.sleep(100);
+				Thread.sleep(1000);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -119,13 +117,15 @@ public class ClientContext {
 						parent.cardClient.travel(card.getId(), "viaje",
 								initialBalance);
 
-					parent.cardClient.recharge(card.getId(), "carga", 10.9);
-					parent.cardClient.recharge(card.getId(), "carga", 20.1);
+					parent.cardClient.recharge(card.getId(), "carga", 30.0);
+					Thread.sleep(100);
 					parent.cardClient.travel(card.getId(), "viaje", 10);
-					parent.cardClient.recharge(card.getId(), "carga", 20.1);
-					parent.cardClient.recharge(card.getId(), "carga", 20.1);
+					Thread.sleep(100);
+					parent.cardClient.recharge(card.getId(), "carga", 40);
+					Thread.sleep(100);
 					parent.cardClient.travel(card.getId(), "viaje", 30);
-				} catch (RemoteException e) {
+					Thread.sleep(100);
+				} catch (RemoteException | InterruptedException e) {
 					throw new RuntimeException();
 				}
 			}
