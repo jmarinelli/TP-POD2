@@ -1,15 +1,17 @@
 package ar.edu.itba.pod.mmxivii.sube.balancer;
 
-import ar.edu.itba.pod.mmxivii.sube.common.CardService;
-import ar.edu.itba.pod.mmxivii.sube.common.CardServiceRegistry;
-
-import javax.annotation.Nonnull;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+
+import javax.annotation.Nonnull;
+
+import ar.edu.itba.pod.mmxivii.sube.common.CardService;
+import ar.edu.itba.pod.mmxivii.sube.common.CardServiceRegistry;
 
 public class CardServiceRegistryImpl extends UnicastRemoteObject implements CardServiceRegistry
 {
@@ -38,6 +40,10 @@ public class CardServiceRegistryImpl extends UnicastRemoteObject implements Card
 
 	CardService getCardService()
 	{
-		return serviceList.get(0);
+		double random = Math.random();
+		if (random > 0.5)
+			return serviceList.get(1);
+		else
+			return serviceList.get(0);
 	}
 }

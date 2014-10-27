@@ -24,6 +24,7 @@ public class Main extends BaseMain
 
 		storeFile = cmdLine.getOptionValue(STORE_FILE_O_L, STORE_FILE_O_D);
 		cardRegistry = getOrCreateCardRegistry();
+		createRegistry();
 		bindObject(CARD_REGISTRY_BIND, cardRegistry);
 	}
 
