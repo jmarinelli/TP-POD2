@@ -1,6 +1,7 @@
 package ar.edu.itba.pod.mmxivii.sube.balancer;
 
 import java.rmi.RemoteException;
+import java.rmi.server.UID;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Collection;
 import java.util.Collections;
@@ -50,7 +51,14 @@ public class CardServiceRegistryImpl extends UnicastRemoteObject implements Card
 				index.set(current);
 			}
 			index.incrementAndGet();
-			return this.serviceList.get(current);
+			CardService candidate = this.serviceList.get(current);
+			try {
+				candidate.getCardBalance(new UID());
+			} catch (RemoteException e) {
+				this.serviceList.remove(current);
+				this.getCardService();
+			}
+			return candidate;
 		}
 	}
 }

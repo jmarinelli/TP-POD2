@@ -83,29 +83,27 @@ public class ClientContext {
 		}
 	}
 
-	void startSimulation() throws RemoteException {
-		System.out.println("Starting simulation...");
-		Executor executors = Executors.newCachedThreadPool();
-		
-		int control = 0;
-		
-		this.cards.add(this.cardClient.newCard("sim1", "simulation 1"));
-		this.cards.add(this.cardClient.newCard("sim2", "simulation 2"));
-		this.cards.add(this.cardClient.newCard("sim3", "simulation 3"));
-		this.cards.add(this.cardClient.newCard("sim4", "simulation 4"));
-		this.cards.add(this.cardClient.newCard("sim5", "simulation 5"));
-		while (true) {
-			executors.execute(getCommand());
-			if (control++ % 4 == 0) {
-				try {
-					Thread.sleep(100);
-				} catch (Exception e) {
-					throw new RuntimeException();
-				}
+	void startSimulation() {
+		try {
+			System.out.println("Starting simulation...");
+			Executor executors = Executors.newCachedThreadPool();
+
+//			int control = 0;
+
+			this.cards.add(this.cardClient.newCard("sim1", "simulationOne"));
+			this.cards.add(this.cardClient.newCard("sim2", "simulationTwo"));
+			this.cards.add(this.cardClient.newCard("sim3", "simulationThree"));
+			this.cards.add(this.cardClient.newCard("sim4", "simulationFour"));
+			this.cards.add(this.cardClient.newCard("sim5", "simulationFive"));
+			while (true) {
+				executors.execute(getCommand());
+				Thread.sleep(100);
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
-	
+
 	private Runnable getCommand() {
 		return new Runnable() {
 
@@ -114,31 +112,27 @@ public class ClientContext {
 				ClientContext parent = ClientContext.this;
 				Card card = parent.getCard();
 				try {
-					double initialBalance = parent.cardClient.getCardBalance(card.getId());
-					
+					double initialBalance = parent.cardClient
+							.getCardBalance(card.getId());
+
 					if (initialBalance > 0.01)
-						parent.cardClient.travel(card.getId(), "viaje", initialBalance);
-					
+						parent.cardClient.travel(card.getId(), "viaje",
+								initialBalance);
+
 					parent.cardClient.recharge(card.getId(), "carga", 10.9);
 					parent.cardClient.recharge(card.getId(), "carga", 20.1);
 					parent.cardClient.travel(card.getId(), "viaje", 10);
 					parent.cardClient.recharge(card.getId(), "carga", 20.1);
 					parent.cardClient.recharge(card.getId(), "carga", 20.1);
 					parent.cardClient.travel(card.getId(), "viaje", 30);
-					
-					double currentBalance = parent.cardClient.getCardBalance(card.getId());
-					
-					double amount = Math.floor((Math.random() * currentBalance) * 100) / 100;
-					
-					parent.cardClient.travel(card.getId(), "viaje", amount);
 				} catch (RemoteException e) {
 					throw new RuntimeException();
 				}
 			}
-			
+
 		};
 	}
-	
+
 	private Card getCard() {
 		return this.cards.get((int) Math.round(Math.random() * 4));
 	}

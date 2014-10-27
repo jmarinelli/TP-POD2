@@ -97,7 +97,7 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService 
 
 	public void flushCache() throws RemoteException {
 		try {
-			lock.acquire();
+			lock.acquire(balances);
 			for (String id : this.balances.keys("*")) {
 				try {
 					Operation balance = Operation.fromJson(this.balances
@@ -124,7 +124,7 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService 
 		} catch (InterruptedException e1) {
 			System.out.println("Interrputed");
 		} finally {
-			lock.release();
+			lock.release(balances);
 		}
 	}
 
