@@ -37,6 +37,8 @@ public class Main extends BaseMain {
 				String[] command = line.split(" ");
 				try {
 					switch (command[0]) {
+					case "simulation":
+						this.context.startSimulation();
 					case "recargar":
 						this.context.recharge(Double.valueOf(command[1]));
 						break;
