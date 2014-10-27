@@ -28,25 +28,28 @@ import ar.edu.itba.pod.mmxivii.sube.service.exception.CardNotFoundException;
 import ar.edu.itba.pod.mmxivii.sube.service.exception.InvalidRechargeException;
 import ar.edu.itba.pod.mmxivii.sube.service.exception.InvalidTravelException;
 
-public class CardServiceImpl extends UnicastRemoteObject implements CardService
-{
-	private static final JedisPool pool = new JedisPool(new JedisPoolConfig(), "localhost");
+import com.github.jedis.lock.JedisLock;
+
+public class CardServiceImpl extends UnicastRemoteObject implements CardService {
+	private static final JedisPool pool = new JedisPool(new JedisPoolConfig(),
+			"localhost");
+	private static final JedisLock lock = new JedisLock("flush");
 	private static final long serialVersionUID = 2919260533266908792L;
 	private static final long FLUSH_TIME = 10000l;
-	
+
 	@Nonnull
 	private CardRegistry cardRegistry;
 	private final Jedis balances;
 
-	public CardServiceImpl(@Nonnull CardRegistry cardRegistry) throws RemoteException
-	{
+	public CardServiceImpl(@Nonnull CardRegistry cardRegistry)
+			throws RemoteException {
 		super(0);
 		this.cardRegistry = cardRegistry;
 		this.balances = pool.getResource();
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				while(true) {
+				while (true) {
 					try {
 						Thread.sleep(FLUSH_TIME);
 						CardServiceImpl.this.flushCache();
@@ -59,9 +62,9 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService
 	}
 
 	@Override
-	public double getCardBalance(@Nonnull UID id) throws RemoteException
-	{
-		Operation balance = Operation.fromJson(this.balances.get(getUIDAsString(id)));
+	public double getCardBalance(@Nonnull UID id) throws RemoteException {
+		Operation balance = Operation.fromJson(this.balances
+				.get(getUIDAsString(id)));
 		if (balance == null) {
 			balance = getBalance(id);
 		}
@@ -69,11 +72,11 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService
 	}
 
 	@Override
-	public double travel(@Nonnull UID id, @Nonnull String description, double amount) throws RemoteException
-	{
+	public double travel(@Nonnull UID id, @Nonnull String description,
+			double amount) throws RemoteException {
 		if (amount >= 100 || amount < 1)
 			throw new IllegalArgumentException();
-		try {			
+		try {
 			return this.updateBalance(id, -amount).getCurrent();
 		} catch (InvalidAmountException e) {
 			throw new InvalidTravelException();
@@ -81,38 +84,51 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService
 	}
 
 	@Override
-	public double recharge(@Nonnull UID id, @Nonnull String description, double amount) throws RemoteException
-	{
+	public double recharge(@Nonnull UID id, @Nonnull String description,
+			double amount) throws RemoteException {
 		if (amount >= 100 || amount < 1)
 			throw new IllegalArgumentException();
 		try {
-			return this.updateBalance(id, amount).getCurrent();			
+			return this.updateBalance(id, amount).getCurrent();
 		} catch (InvalidAmountException e) {
 			throw new InvalidRechargeException();
 		}
 	}
-	
+
 	public void flushCache() throws RemoteException {
-		for (String id : this.balances.keys("*")) {
-			try {
-				Operation balance = Operation.fromJson(this.balances.get(id));
-				Double result = this.cardRegistry.addCardOperation(this.getStringAsUID(id), "operation", balance.diff());
-				
-				// Si no hay errores lo borro, si no lo mantengo hasta que se solucionen
-				
-				if (result >= 0) {
+		try {
+			lock.acquire();
+			for (String id : this.balances.keys("*")) {
+				try {
+					Operation balance = Operation.fromJson(this.balances
+							.get(id));
+					Double result = this.cardRegistry.addCardOperation(
+							this.getStringAsUID(id), "operation",
+							balance.diff());
+
+					// Si no hay errores lo borro, si no lo mantengo hasta que
+					// se solucionen
+
+					if (result >= 0) {
+						this.balances.del(id);
+					}
+				} catch (ConnectException e) {
+					// Si hay un error en la conexión se intenta hacerla
+					// nuevamente
+					reconnectCardRegistry();
+				} catch (Exception e) {
+					// Corrupted data in redis, deleting
 					this.balances.del(id);
 				}
-			} catch (ConnectException e) {
-				// Si hay un error en la conexión se intenta hacerla nuevamente
-				reconnectCardRegistry();
-			} catch (Exception e) {
-				// Corrupted data in redis, deleting
-				this.balances.del(id);
 			}
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} finally {
+			lock.release();
 		}
 	}
-	
+
 	private void reconnectCardRegistry() {
 		try {
 			this.cardRegistry = Utils.lookupObject(CARD_REGISTRY_BIND);
@@ -120,20 +136,24 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService
 			throw new IllegalStateException();
 		}
 	}
-	
+
 	private Operation getBalance(UID id) throws RemoteException {
 		Double originalBalance = cardRegistry.getCardBalance(id);
 		if (originalBalance == CardRegistry.CARD_NOT_FOUND)
 			throw new CardNotFoundException();
-		Operation balance = new Operation(originalBalance, originalBalance, new Date());
+		Operation balance = new Operation(originalBalance, originalBalance,
+				new Date());
 		this.balances.set(getUIDAsString(id), balance.asJson());
-		
+
 		return balance;
 	}
-	
-	private Operation updateBalance(UID id, Double amount) throws RemoteException, InvalidAmountException {
-		System.out.println("updateo el cache para id: " + id + " amount: " + amount);
-		Operation balance = Operation.fromJson(this.balances.get(getUIDAsString(id)));
+
+	private Operation updateBalance(UID id, Double amount)
+			throws RemoteException, InvalidAmountException {
+		System.out.println("updateo el cache para id: " + id + " amount: "
+				+ amount);
+		Operation balance = Operation.fromJson(this.balances
+				.get(getUIDAsString(id)));
 		if (balance == null) {
 			balance = getBalance(id);
 		}
@@ -143,18 +163,19 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService
 			return balance;
 		}
 	}
-	
+
 	private UID getStringAsUID(String id) {
 		try {
-			return UID.read(new DataInputStream(new ByteArrayInputStream(id.getBytes("ISO-8859-1"))));
+			return UID.read(new DataInputStream(new ByteArrayInputStream(id
+					.getBytes("ISO-8859-1"))));
 		} catch (IOException e) {
 			throw new RuntimeException();
 		}
 	}
-	
+
 	private String getUIDAsString(UID id) {
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
-		
+
 		DataOutput output = new DataOutputStream(stream);
 
 		try {
@@ -162,7 +183,7 @@ public class CardServiceImpl extends UnicastRemoteObject implements CardService
 		} catch (IOException e) {
 			throw new RuntimeException();
 		}
-		
+
 		try {
 			return stream.toString("ISO-8859-1");
 		} catch (UnsupportedEncodingException e) {
